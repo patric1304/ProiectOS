@@ -10,17 +10,19 @@
 static Treasure treasures[MAX_TREASURES];
 static int treasure_count = 0;
 
-void add_treasure(const char *hunt_id, Treasure treasure) {
+void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char users[][MAX_LENGTH]) {
     char treasure_file[256], log_file[256];
 
     // Initialize the users array and user_count
     treasure.user_count = 0;
-    for (int i = 0; i < MAX_USERS; i++) {
-        treasure.users[i][0] = '\0'; // Initialize each user slot as empty
+    for (int i = 0; i < userNumber && i < MAX_USERS; i++) {
+        strncpy(treasure.users[i], users[i], MAX_LENGTH - 1);
+        treasure.users[i][MAX_LENGTH - 1] = '\0'; // Ensure null-termination
+        treasure.user_count++;
     }
 
     // Create the treasure file
-    snprintf(treasure_file, sizeof(treasure_file), "hunt/%s/treasure_%s.dat", hunt_id, treasure.id);
+    snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure.id);
     FILE *file = fopen(treasure_file, "wb");
     if (!file) {
         perror("Error creating treasure file");
@@ -30,12 +32,12 @@ void add_treasure(const char *hunt_id, Treasure treasure) {
     fclose(file);
 
     // Log the action
-    snprintf(log_file, sizeof(log_file), "hunt/%s/logs/log.txt", hunt_id);
+    snprintf(log_file, sizeof(log_file), "../hunt/%s/%s_logs.txt", hunt_id, hunt_id);
     char log_entry[256];
-    snprintf(log_entry, sizeof(log_entry), "Added treasure '%s' with value %d", treasure.id, treasure.value);
+    snprintf(log_entry, sizeof(log_entry), "Added treasure '%s' with value %d and %d users", treasure.id, treasure.value, treasure.user_count);
     log_action(log_file, log_entry);
 
-    printf("Treasure '%s' added to hunt '%s'.\n", treasure.id, hunt_id);
+    printf("Treasure '%s' added to hunt '%s' with %d users.\n", treasure.id, hunt_id, treasure.user_count);
 }
 
 void list_treasures() {
@@ -60,14 +62,14 @@ void remove_treasure(const char *hunt_id, const char *treasure_id) {
     char treasure_file[256], log_file[256];
 
     // Construct the path to the treasure file
-    snprintf(treasure_file, sizeof(treasure_file), "hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
+    snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
 
     // Attempt to delete the treasure file
     if (remove(treasure_file) == 0) {
         printf("Treasure '%s' removed from hunt '%s'.\n", treasure_id, hunt_id);
 
         // Log the action
-        snprintf(log_file, sizeof(log_file), "hunt/%s/logs/log.txt", hunt_id);
+        snprintf(log_file, sizeof(log_file), "../hunt/%s/%s_logs.txt", hunt_id, hunt_id);
         char log_entry[256];
         snprintf(log_entry, sizeof(log_entry), "Removed treasure '%s'", treasure_id);
         log_action(log_file, log_entry);
@@ -81,8 +83,8 @@ void create_hunt(const char *hunt_id) {
     char hunt_path[256], log_path[256], symlink_path[256];
 
     // Create the main hunt directory
-    snprintf(hunt_path, sizeof(hunt_path), "hunt/%s", hunt_id);
-    if (create_directory("hunt") == 0 && create_directory(hunt_path) == 0) {
+    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    if (create_directory("../hunt") == 0 && create_directory(hunt_path) == 0) {
         // Create the logs directory inside the hunt
         snprintf(log_path, sizeof(log_path), "%s/logs", hunt_path);
         if (create_directory(log_path) == 0) {
@@ -98,10 +100,15 @@ void create_hunt(const char *hunt_id) {
                 return;
             }
 
+            // Ensure the symbolic link directory exists
+            create_directory("../log");
+
             // Create a symbolic link to the logs directory
-            snprintf(symlink_path, sizeof(symlink_path), "log/final_logs_%s", hunt_id);
+            snprintf(symlink_path, sizeof(symlink_path), "../log/final_logs_%s", hunt_id);
             if (create_symlink(log_path, symlink_path) == 0) {
                 printf("Hunt '%s' created successfully with logs.\n", hunt_id);
+            } else {
+                perror("Error creating symbolic link");
             }
         }
     }
@@ -109,7 +116,7 @@ void create_hunt(const char *hunt_id) {
 
 void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const char *username) {
     char treasure_file[256];
-    snprintf(treasure_file, sizeof(treasure_file), "hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
+    snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
 
     // Open the treasure file for reading and writing
     FILE *file = fopen(treasure_file, "rb+");
@@ -149,6 +156,35 @@ void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const ch
         }
     } else {
         printf("Cannot add more users to treasure '%s'. Maximum limit of %d users reached.\n", treasure_id, MAX_USERS);
+    }
+
+    fclose(file);
+}
+
+void display_treasure(const char *hunt_id, const char *treasure_id) {
+    char treasure_file[256];
+    snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
+
+    FILE *file = fopen(treasure_file, "rb");
+    if (!file) {
+        perror("Error opening treasure file");
+        return;
+    }
+
+    printf("Treasures in Hunt '%s':\n", hunt_id);
+
+    Treasure treasure;
+    while (fread(&treasure, sizeof(Treasure), 1, file) == 1) {
+        printf("ID: %s\n", treasure.id);
+        printf("Latitude: %.2f\n", treasure.latitude);
+        printf("Longitude: %.2f\n", treasure.longitude);
+        printf("Description: %s\n", treasure.description);
+        printf("Value: %d\n", treasure.value);
+        printf("Users (%d): ", treasure.user_count);
+        for (int i = 0; i < treasure.user_count; i++) {
+            printf("%s ", treasure.users[i]);
+        }
+        printf("\n\n");
     }
 
     fclose(file);
