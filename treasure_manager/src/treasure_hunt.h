@@ -19,5 +19,7 @@ void create_hunt(const char *hunt_id);
 void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char users[][MAX_LENGTH]);
 void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const char *username);
 void remove_treasure(const char *hunt_id, const char *treasure_id);	
-void display_treasure(const char *hunt_id, const char *treasure_id);
+void list(const char *hunt_id);
+void view(const char *hunt_id, const char *treasure_id);
+void remove_hunt(const char *hunt_id);
 #endif // TREASURE_HUNT_H

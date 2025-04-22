@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 #include "treasure_hunt.h"
 #include "file_operations.h"
 #include "logger.h"
@@ -161,7 +166,7 @@ void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const ch
     fclose(file);
 }
 
-void display_treasure(const char *hunt_id, const char *treasure_id) {
+void view(const char *hunt_id, const char *treasure_id) {
     char treasure_file[256];
     snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
 
@@ -188,4 +193,103 @@ void display_treasure(const char *hunt_id, const char *treasure_id) {
     }
 
     fclose(file);
+}
+
+void list(const char *hunt_id) {
+    char hunt_path[256];
+    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+
+    DIR *dir = opendir(hunt_path);
+    if (!dir) {
+        fprintf(stderr, "Error opening hunt directory '%s': %s\n", hunt_path, strerror(errno));
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip '.' and '..'
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // Check if file starts with "treasure_" and ends with ".dat"
+        if (strncmp(entry->d_name, "treasure_", 9) == 0) {
+            size_t len = strlen(entry->d_name);
+            if (len > 4 && strcmp(entry->d_name + len - 4, ".dat") == 0) {
+                // Extract treasure_id from filename (between "treasure_" and ".dat")
+                char treasure_id[128];
+                strncpy(treasure_id, entry->d_name + 9, len - 13); // 9 for prefix, 4 for suffix
+                treasure_id[len - 13] = '\0';
+
+                // Use view() to show treasure details
+                view(hunt_id, treasure_id);
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+void remove_hunt(const char *hunt_id) {
+    char hunt_path[256];
+    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+
+    // 1) Remove all treasure .dat files
+    DIR *d = opendir(hunt_path);
+    if (!d) {
+        fprintf(stderr, "Error opening '%s': %s\n", hunt_path, strerror(errno));
+        return;
+    }
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        // skip "." and ".."
+        if (e->d_name[0]=='.' && (e->d_name[1]=='\0' || (e->d_name[1]=='.'&&e->d_name[2]=='\0')))
+            continue;
+        if (strncmp(e->d_name, "treasure_", 9)==0) {
+            size_t L = strlen(e->d_name);
+            if (L>13 && strcmp(e->d_name+L-4, ".dat")==0) {
+                char tid[128];
+                memcpy(tid, e->d_name+9, L-9-4);
+                tid[L-9-4] = '\0';
+                remove_treasure(hunt_id, tid);
+            }
+        }
+    }
+    closedir(d);
+
+    // 2) Remove logs/ subdirectory (just its files, then rmdir)
+    char logs_dir[256];
+    snprintf(logs_dir, sizeof(logs_dir), "%s/logs", hunt_path);
+    d = opendir(logs_dir);
+    if (d) {
+        while ((e = readdir(d)) != NULL) {
+            if (strcmp(e->d_name, ".")==0 || strcmp(e->d_name, "..")==0) continue;
+            char f[512];
+            snprintf(f, sizeof(f), "%s/%s", logs_dir, e->d_name);
+            if (remove(f)!=0)
+                fprintf(stderr, "Failed to remove '%s': %s\n", f, strerror(errno));
+        }
+        closedir(d);
+        if (rmdir(logs_dir)!=0)
+            fprintf(stderr, "Failed to rmdir '%s': %s\n", logs_dir, strerror(errno));
+    }
+
+    // 3) Remove the external log file (pattern: ../logs/<hunt_id>_log.txt)
+    char ext_log[256];
+    snprintf(ext_log, sizeof(ext_log), "../logs/%s_log.txt", hunt_id);
+    if (remove(ext_log)!=0 && errno!=ENOENT)
+        fprintf(stderr, "Failed to remove external log '%s': %s\n", ext_log, strerror(errno));
+
+    // 4) Remove the symlink in the hunt folder (it’s named "<hunt_id>_logs.txt")
+    char link_path[256];
+    snprintf(link_path, sizeof(link_path), "%s/%s_logs.txt", hunt_path, hunt_id);
+    if (remove(link_path)!=0 && errno!=ENOENT)
+        fprintf(stderr, "Failed to remove symlink '%s': %s\n", link_path, strerror(errno));
+
+    // 5) Finally, remove the empty hunt directory
+    if (rmdir(hunt_path)==0) {
+        printf("Hunt '%s' fully removed.\n", hunt_id);
+    } else {
+        fprintf(stderr, "Could not remove '%s': %s\n", hunt_path, strerror(errno));
+    }
 }

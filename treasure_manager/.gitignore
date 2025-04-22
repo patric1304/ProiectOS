@@ -1,0 +1,5 @@
+#Ignore the created hunts
+hunt/
+
+#Ignore the logs
+log/

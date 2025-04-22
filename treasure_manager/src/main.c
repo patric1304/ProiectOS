@@ -13,7 +13,9 @@ void display_help() {
     printf("  add_treasure      <hunt_id> <id> <user1> [user2 ...] <lat> <lon> <desc> <value>  Add a treasure with users\n");
     printf("  add_user          <hunt_id> <treasure_id> <username>       Add a user to a treasure\n");
     printf("  remove_treasure   <hunt_id> <treasure_id>                  Remove a treasure from a hunt\n");
-    printf("  list_treasure    <hunt_id> <treasure_id>                                List all treasures in a hunt\n");
+    printf("  remove_hunt      <hunt_id>                                Remove a treasure hunt\n");
+    printf("  view_treasure    <hunt_id> <treasure_id>                                List all treasures in a hunt\n");
+    printf("  list_treasures    <hunt_id>                                List all treasures in a hunt\n");
     printf("  help                                                      Display this help message\n");
 }
 
@@ -73,10 +75,16 @@ int main(int argc, char *argv[]) {
         const char *hunt_id = argv[2];
         const char *treasure_id = argv[3];
         remove_treasure(hunt_id, treasure_id);
-    } else if (strcmp(command, "list_treasure") == 0 && argc == 4) {
+    } else if (strcmp(command, "remove_hunt") == 0 && argc == 3) {
+        const char *hunt_id = argv[2];
+        remove_hunt(hunt_id);
+    } else if (strcmp(command, "view_treasure") == 0 && argc == 4) {
         const char *hunt_id = argv[2];
         const char *treasure_id = argv[3];
-        display_treasure(hunt_id, treasure_id);
+        view(hunt_id, treasure_id);
+    } else if (strcmp(command, "list_treasures") == 0 && argc == 3) {
+        const char *hunt_id = argv[2];
+        list(hunt_id);
     } else if (strcmp(command, "help") == 0) {
         display_help();
     } else {
