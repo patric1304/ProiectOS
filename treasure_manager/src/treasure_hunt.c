@@ -18,7 +18,6 @@ static int treasure_count = 0;
 void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char users[][MAX_LENGTH]) {
     char treasure_file[256], log_file[256];
 
-    // Initialize the users array and user_count
     treasure.user_count = 0;
     for (int i = 0; i < userNumber && i < MAX_USERS; i++) {
         strncpy(treasure.users[i], users[i], MAX_LENGTH - 1);

@@ -3,3 +3,9 @@ hunt/
 
 #Ignore the logs
 log/
+
+#Ignore the command form monitor
+commands.txt
+
+#Ignore the responses from signal processing 
+response.txt
