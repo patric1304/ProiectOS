@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(command, "create_hunt") == 0 && argc == 3) {
         create_hunt(argv[2]);
     } else if (strcmp(command, "add_treasure") == 0) {
-        if (argc < 9) { // Minimum arguments: hunt_id, treasure_id, at least 1 user, lat, lon, desc, value
+        if (argc < 9) { 
             printf("Insufficient arguments for add_treasure command.\n");
             display_help();
             return 1;
@@ -40,21 +40,19 @@ int main(int argc, char *argv[]) {
         const char *hunt_id = argv[2];
         const char *treasure_id = argv[3];
 
-        // Parse the number of users
-        int userNumber = argc - 8; // Subtract fixed arguments: hunt_id, treasure_id, lat, lon, desc, value
+        
+        int userNumber = argc - 8;
         if (userNumber > MAX_USERS) {
             printf("Too many users. Maximum allowed is %d.\n", MAX_USERS);
             return 1;
         }
 
-        // Collect the users
         char users[MAX_USERS][MAX_LENGTH];
         for (int i = 0; i < userNumber; i++) {
             strncpy(users[i], argv[4 + i], MAX_LENGTH - 1);
-            users[i][MAX_LENGTH - 1] = '\0'; // Ensure null-termination
+            users[i][MAX_LENGTH - 1] = '\0'; 
         }
 
-        // Parse the remaining arguments
         Treasure treasure;
         strncpy(treasure.id, treasure_id, sizeof(treasure.id) - 1);
         treasure.id[sizeof(treasure.id) - 1] = '\0';
@@ -63,8 +61,6 @@ int main(int argc, char *argv[]) {
         strncpy(treasure.description, argv[6 + userNumber], sizeof(treasure.description) - 1);
         treasure.description[sizeof(treasure.description) - 1] = '\0';
         treasure.value = atoi(argv[7 + userNumber]);
-
-        // Call the updated add_treasure function
         add_treasure(hunt_id, treasure, userNumber, users);
     } else if (strcmp(command, "add_user") == 0 && argc == 5) {
         const char *hunt_id = argv[2];

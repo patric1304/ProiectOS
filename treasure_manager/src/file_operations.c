@@ -7,9 +7,8 @@
 #include <direct.h>
 #include "file_operations.h"
 
-// Function to write treasure data to a file
 int write_treasure_data(const char *filename, const char *data) {
-    FILE *fp = fopen(filename, "ab");  // Open for appending in binary mode
+    FILE *fp = fopen(filename, "ab");  
     if (fp == NULL) {
         perror("Failed to open file for writing");
         return -1;
@@ -23,17 +22,16 @@ int write_treasure_data(const char *filename, const char *data) {
     return 0;
 }
 
-// Function to read treasure data from a file
 int read_treasure_data(const char *filename) {
     char buffer[256];
-    FILE *fp = fopen(filename, "rb");  // Open for reading in binary mode
+    FILE *fp = fopen(filename, "rb"); 
     if (fp == NULL) {
         perror("Failed to open file for reading");
         return -1;
     }
     size_t bytesRead;
     while ((bytesRead = fread(buffer, 1, sizeof(buffer) - 1, fp)) > 0) {
-        buffer[bytesRead] = '\0'; // Null-terminate the buffer
+        buffer[bytesRead] = '\0'; 
         printf("%s", buffer);
     }
     if (ferror(fp)) {
@@ -110,4 +108,3 @@ int create_symlink(const char *target, const char *link) {
     return 0;
 }
 #endif
-

@@ -22,4 +22,4 @@ void remove_treasure(const char *hunt_id, const char *treasure_id);
 void list(const char *hunt_id);
 void view(const char *hunt_id, const char *treasure_id);
 void remove_hunt(const char *hunt_id);
-#endif // TREASURE_HUNT_H
+#endif 
