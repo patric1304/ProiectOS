@@ -1,11 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>  
+#include <unistd.h>    
 #include "logger.h"
+
 
 #define LOG_FILE "logs/treasure_manager.log"
 
 void init_logger() {
+
+    struct stat st = {0};
+    if (stat("logs", &st) == -1) {
+        if (mkdir("logs", 0777) != 0) { // Create the logs directory with full permissions
+            perror("Failed to create logs directory");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     FILE *file = fopen(LOG_FILE, "a");
     if (file == NULL) {
         perror("Failed to open log file");
