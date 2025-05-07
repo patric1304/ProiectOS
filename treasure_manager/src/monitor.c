@@ -1,34 +1,18 @@
-//since i am using a windows machine but i want this project to work on linux too
-//i am using ifdef in order to be able to test it on both platforms
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h> 
-#include "treasure_hunt.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#else
+#include <dirent.h>
 #include <signal.h>
 #include <unistd.h>
-#endif
+#include "treasure_hunt.h"
 
 #define CMD_FILE "command.txt"
-#define RESPONSE_FILE "C:\\Users\\Patri\\AN2_sem2\\OS\\ProiectOS\\treasure_manager\\src\\response.txt"
 
-#ifdef _WIN32
-volatile int stop_requested = 0;
-HANDLE event_handle;
-#else
 volatile sig_atomic_t stop_requested = 0;
-#endif
 
 void handle_signal() {
-
     printf("handle_signal called\n");
-    
+
     FILE *cmd_file = fopen(CMD_FILE, "r");
     if (!cmd_file) {
         perror("Failed to open command file");
@@ -37,8 +21,8 @@ void handle_signal() {
 
     char command[256];
     if (fgets(command, sizeof(command), cmd_file)) {
-        command[strcspn(command, "\n")] = '\0';
-        FILE *resp_file = fopen(RESPONSE_FILE, "w");
+        command[strcspn(command, "\n")] = '\0'; // Remove trailing newline
+        FILE *resp_file = fopen("response.txt", "ap");
         if (!resp_file) {
             perror("Failed to open response file");
             fclose(cmd_file);
@@ -63,21 +47,16 @@ void handle_signal() {
         } else if (strcmp(command, "list_treasures") == 0) {
             fprintf(resp_file, "Listing all treasures...\n");
 
-            // Read hunt ID from command.txt
+            // Prompt the user for the hunt ID
             char hunt_id[256];
-            FILE *cmd_file = fopen(CMD_FILE, "r");
-            if (!cmd_file) {
-                perror("Failed to open command file");
+            printf("Enter hunt ID: ");
+            if (scanf("%255s", hunt_id) != 1) {
+                fprintf(resp_file, "Error: Failed to read hunt ID from keyboard.\n");
                 fclose(resp_file);
+                fclose(cmd_file);
                 return;
-            }
-            if (fgets(hunt_id, sizeof(hunt_id), cmd_file)) {
-                hunt_id[strcspn(hunt_id, "\n")] = '\0'; // Remove newline
-            }
-            fclose(cmd_file);
-
-            // Call the list function from treasure_hunt.c
-            list(hunt_id); // Assume list writes treasure info to resp_file
+         }
+            list(hunt_id);
         } else if (strcmp(command, "view_treasure") == 0) {
             fprintf(resp_file, "Viewing a specific treasure...\n");
             char hunt_id[256], treasure_id[256];
@@ -86,6 +65,12 @@ void handle_signal() {
             printf("Enter treasure ID: ");
             scanf("%s", treasure_id);
             view(hunt_id, treasure_id);
+        } else if (strcmp(command, "help") == 0) {
+            fprintf(resp_file, "Available commands:\n");
+            fprintf(resp_file, "  list_hunts       - List all hunts\n");
+            fprintf(resp_file, "  list_treasures   - List all treasures in a hunt\n");
+            fprintf(resp_file, "  view_treasure    - View details of a specific treasure\n");
+            fprintf(resp_file, "  help             - Display this help message\n");
         } else {
             fprintf(resp_file, "Unknown command: %s\n", command);
         }
@@ -96,29 +81,6 @@ void handle_signal() {
     fclose(cmd_file);
 }
 
-#ifdef _WIN32
-void setup_event() {
-    event_handle = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (event_handle == NULL) {
-        perror("CreateEvent failed");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void wait_for_event() {
-    DWORD result = WaitForSingleObject(event_handle, INFINITE);
-
-    if (result == WAIT_OBJECT_0) {
-        handle_signal();
-        ResetEvent(event_handle);
-    }
-}
-
-void stop_monitor() {
-    stop_requested = 1;
-    CloseHandle(event_handle);
-}
-#else
 void handle_signal_usr1(int sig) {
     if (sig == SIGUSR1) {
         handle_signal();
@@ -158,40 +120,25 @@ void wait_for_signal() {
 void stop_monitor() {
     stop_requested = 1;
 }
-#endif
 
 int main() {
     printf("Monitor process started. Waiting for commands...\n");
 
-    FILE *resp_file = fopen(RESPONSE_FILE, "w");
+    FILE *resp_file = fopen("response.txt", "w");
     if (!resp_file) {
         perror("Failed to create response file");
         exit(EXIT_FAILURE);
     }
     fclose(resp_file);
 
-#ifdef _WIN32
-    setup_event();
-#else
     setup_signal_handlers();
-#endif
 
     while (!stop_requested) {
-#ifdef _WIN32
-        wait_for_event();
-#else
         wait_for_signal();
-#endif
     }
 
     printf("Monitor process stopping...\n");
-
-#ifdef _WIN32
-    Sleep(500);
-#else
     usleep(500000);
-#endif
-
     printf("Monitor process stopped.\n");
 
     stop_monitor();
