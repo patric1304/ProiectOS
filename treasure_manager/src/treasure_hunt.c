@@ -18,11 +18,10 @@ static int treasure_count = 0;
 void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char users[][MAX_LENGTH]) {
     char treasure_file[256], log_file[256];
 
-    // Initialize the users array and user_count
     treasure.user_count = 0;
     for (int i = 0; i < userNumber && i < MAX_USERS; i++) {
         strncpy(treasure.users[i], users[i], MAX_LENGTH - 1);
-        treasure.users[i][MAX_LENGTH - 1] = '\0'; // Ensure null-termination
+        treasure.users[i][MAX_LENGTH - 1] = '\0'; 
         treasure.user_count++;
     }
 
@@ -149,11 +148,9 @@ void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const ch
     // Add the new user to the treasure
     if (treasure.user_count < MAX_USERS) {
         strncpy(treasure.users[treasure.user_count], username, MAX_LENGTH - 1);
-        treasure.users[treasure.user_count][MAX_LENGTH - 1] = '\0'; // Ensure null-termination
+        treasure.users[treasure.user_count][MAX_LENGTH - 1] = '\0'; 
         treasure.user_count++;
 
-        // Seek back to the beginning of the file and update the treasure
-        fseek(file, 0, SEEK_SET);
         if (fwrite(&treasure, sizeof(Treasure), 1, file) != 1) {
             perror("Error updating treasure data");
         } else {
@@ -207,21 +204,17 @@ void list(const char *hunt_id) {
 
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
-        // Skip '.' and '..'
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        // Check if file starts with "treasure_" and ends with ".dat"
         if (strncmp(entry->d_name, "treasure_", 9) == 0) {
             size_t len = strlen(entry->d_name);
             if (len > 4 && strcmp(entry->d_name + len - 4, ".dat") == 0) {
-                // Extract treasure_id from filename (between "treasure_" and ".dat")
                 char treasure_id[128];
-                strncpy(treasure_id, entry->d_name + 9, len - 13); // 9 for prefix, 4 for suffix
+                strncpy(treasure_id, entry->d_name + 9, len - 13); 
                 treasure_id[len - 13] = '\0';
 
-                // Use view() to show treasure details
                 view(hunt_id, treasure_id);
             }
         }
@@ -234,7 +227,6 @@ void remove_hunt(const char *hunt_id) {
     char hunt_path[256];
     snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
 
-    // 1) Remove all treasure .dat files
     DIR *d = opendir(hunt_path);
     if (!d) {
         fprintf(stderr, "Error opening '%s': %s\n", hunt_path, strerror(errno));
@@ -257,7 +249,6 @@ void remove_hunt(const char *hunt_id) {
     }
     closedir(d);
 
-    // 2) Remove logs/ subdirectory (just its files, then rmdir)
     char logs_dir[256];
     snprintf(logs_dir, sizeof(logs_dir), "%s/logs", hunt_path);
     d = opendir(logs_dir);
@@ -274,19 +265,16 @@ void remove_hunt(const char *hunt_id) {
             fprintf(stderr, "Failed to rmdir '%s': %s\n", logs_dir, strerror(errno));
     }
 
-    // 3) Remove the external log file (pattern: ../logs/<hunt_id>_log.txt)
     char ext_log[256];
     snprintf(ext_log, sizeof(ext_log), "../logs/%s_log.txt", hunt_id);
     if (remove(ext_log)!=0 && errno!=ENOENT)
         fprintf(stderr, "Failed to remove external log '%s': %s\n", ext_log, strerror(errno));
 
-    // 4) Remove the symlink in the hunt folder (it’s named "<hunt_id>_logs.txt")
     char link_path[256];
     snprintf(link_path, sizeof(link_path), "%s/%s_logs.txt", hunt_path, hunt_id);
     if (remove(link_path)!=0 && errno!=ENOENT)
         fprintf(stderr, "Failed to remove symlink '%s': %s\n", link_path, strerror(errno));
 
-    // 5) Finally, remove the empty hunt directory
     if (rmdir(hunt_path)==0) {
         printf("Hunt '%s' fully removed.\n", hunt_id);
     } else {

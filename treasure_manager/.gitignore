@@ -3,3 +3,9 @@ hunt/
 
 #Ignore the logs
 log/
+
+#Ignore all .txt files
+*.txt
+
+#Ignnore all executables
+*.exe

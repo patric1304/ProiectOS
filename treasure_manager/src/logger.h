@@ -9,4 +9,4 @@ void initialize_logger(const char *log_file);
 void close_logger();
 void log_action(const char *log_file, const char *action);
 
-#endif // LOGGER_H
+#endif 

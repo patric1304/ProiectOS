@@ -12,4 +12,4 @@ void handle_error(const char *message);
 // Function to clear the input buffer
 void clear_input_buffer();
 
-#endif // UTILS_H
+#endif 
