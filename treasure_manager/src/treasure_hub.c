@@ -110,12 +110,27 @@ void send_command(const char *command) {
 #ifdef _WIN32
     SetEvent(monitor_event);
 #else
-    if (kill(monitor_pid, SIGUSR1) == -1) {
-        perror("Failed to send SIGUSR1");
-    } else {
-        printf("SIGUSR1 sent to monitor process (PID: %d).\n", monitor_pid); // Debug print
-    }
+    kill(monitor_pid, SIGUSR1);
 #endif
+
+#ifdef _WIN32
+    Sleep(100);
+#else
+    usleep(100000);
+#endif
+
+    // Read response.txt and display the output
+    FILE *resp_file = fopen(RESPONSE_FILE, "r");
+    if (!resp_file) {
+        perror("Failed to open response file");
+        return;
+    }
+
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), resp_file)) {
+        printf("%s", buffer); // Print treasure information to the terminal
+    }
+    fclose(resp_file);
 }
 
 void handle_exit() {

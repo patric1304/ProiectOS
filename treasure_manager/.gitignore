@@ -4,8 +4,8 @@ hunt/
 #Ignore the logs
 log/
 
-#Ignore the command form monitor
-commands.txt
+#Ignore all .txt files
+*.txt
 
-#Ignore the responses from signal processing 
-response.txt
+#Ignnore all executables
+*.exe

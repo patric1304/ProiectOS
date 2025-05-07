@@ -16,7 +16,7 @@
 #endif
 
 #define CMD_FILE "command.txt"
-#define RESPONSE_FILE "response.txt"
+#define RESPONSE_FILE "C:\\Users\\Patri\\AN2_sem2\\OS\\ProiectOS\\treasure_manager\\src\\response.txt"
 
 #ifdef _WIN32
 volatile int stop_requested = 0;
@@ -26,6 +26,8 @@ volatile sig_atomic_t stop_requested = 0;
 #endif
 
 void handle_signal() {
+
+    printf("handle_signal called\n");
     
     FILE *cmd_file = fopen(CMD_FILE, "r");
     if (!cmd_file) {
@@ -42,6 +44,7 @@ void handle_signal() {
             fclose(cmd_file);
             return;
         }
+        fprintf(resp_file, "Debugging %s\n", command);
 
         if (strcmp(command, "list_hunts") == 0) {
             fprintf(resp_file, "Listing all hunts...\n");
@@ -59,10 +62,22 @@ void handle_signal() {
             }
         } else if (strcmp(command, "list_treasures") == 0) {
             fprintf(resp_file, "Listing all treasures...\n");
+
+            // Read hunt ID from command.txt
             char hunt_id[256];
-            printf("Enter hunt ID: ");
-            scanf("%s", hunt_id);
-            list(hunt_id);
+            FILE *cmd_file = fopen(CMD_FILE, "r");
+            if (!cmd_file) {
+                perror("Failed to open command file");
+                fclose(resp_file);
+                return;
+            }
+            if (fgets(hunt_id, sizeof(hunt_id), cmd_file)) {
+                hunt_id[strcspn(hunt_id, "\n")] = '\0'; // Remove newline
+            }
+            fclose(cmd_file);
+
+            // Call the list function from treasure_hunt.c
+            list(hunt_id); // Assume list writes treasure info to resp_file
         } else if (strcmp(command, "view_treasure") == 0) {
             fprintf(resp_file, "Viewing a specific treasure...\n");
             char hunt_id[256], treasure_id[256];
@@ -110,6 +125,12 @@ void handle_signal_usr1(int sig) {
     }
 }
 
+void handle_signal_usr2(int sig) {
+    if (sig == SIGUSR2) {
+        stop_requested = 1;
+    }
+}
+
 void setup_signal_handlers() {
     struct sigaction sa;
     sa.sa_handler = handle_signal_usr1;
@@ -121,7 +142,7 @@ void setup_signal_handlers() {
     }
 
     struct sigaction sa_stop;
-    sa_stop.sa_handler = SIG_IGN;
+    sa_stop.sa_handler = handle_signal_usr2;
     sa_stop.sa_flags = 0;
     sigemptyset(&sa_stop.sa_mask);
     if (sigaction(SIGUSR2, &sa_stop, NULL) == -1) {
