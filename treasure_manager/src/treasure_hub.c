@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #define CMD_FILE "command.txt"
 #define RESPONSE_FILE "response.txt"
@@ -74,6 +75,30 @@ void send_command(const char *command) {
     fclose(resp_file);
 }
 
+void calculate_score(const char *hunt_id) {
+    char hunt_path[256];
+    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Child process: Execute the external program
+        execl("./calculate_score", "./calculate_score", hunt_path, NULL);
+        perror("Failed to execute calculate_score");
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        // Parent process: Wait for the child to finish
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            printf("Score calculation for hunt '%s' completed.\n", hunt_id);
+        } else {
+            printf("Score calculation for hunt '%s' failed.\n", hunt_id);
+        }
+    } else {
+        perror("Failed to fork");
+    }
+}
+
 void handle_exit() {
     if (monitor_pid != -1) {
         printf("Error: Monitor is still running. Stop it first.\n");
@@ -102,6 +127,11 @@ int main() {
             stop_monitor();
         } else if (strcmp(command, "list_hunts") == 0 || strcmp(command, "list_treasures") == 0 || strcmp(command, "view_treasure") == 0) {
             send_command(command);
+        } else if (strcmp(command, "calculate_score") == 0) {
+            char hunt_id[50];
+            printf("Enter hunt ID: ");
+            scanf("%s", hunt_id);
+            calculate_score(hunt_id);
         } else if (strcmp(command, "exit") == 0) {
             handle_exit();
         } else if (strcmp(command, "help") == 0) {
@@ -111,10 +141,11 @@ int main() {
             printf("  list_hunts - List all hunts.\n");
             printf("  list_treasures - List all treasures in a hunt.\n");
             printf("  view_treasure - View details of a specific treasure.\n");
+            printf("  calculate_score - Calculate the score for a specific hunt.\n");
             printf("  exit - Exit the treasure_hub.\n");
             printf("  help - Display this help message.\n");
         } else {
-            printf("Unknown command. Available commands: start_monitor, stop_monitor, list_hunts, list_treasures, view_treasure, exit.\n");
+            printf("Unknown command. Available commands: start_monitor, stop_monitor, list_hunts, list_treasures, view_treasure, calculate_score, exit.\n");
         }
     }
 

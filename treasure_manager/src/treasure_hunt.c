@@ -35,9 +35,10 @@ void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char u
     fwrite(&treasure, sizeof(Treasure), 1, file);
     fclose(file);
 
-    snprintf(log_file, sizeof(log_file), "../hunt/%s/%s_logs.txt", hunt_id, hunt_id);
+    // Log the addition of the treasure
+    snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
     char log_entry[512];
-    snprintf(log_entry, sizeof(log_entry), "Added treasure '%s' with value %d and %d users", treasure.id, treasure.value, treasure.user_count);
+    snprintf(log_entry, sizeof(log_entry), "Added treasure '%s' with value %d and %d users\n", treasure.id, treasure.value, treasure.user_count);
     log_action(log_file, log_entry);
 
     printf("Treasure '%s' added to hunt '%s' with %d users.\n", treasure.id, hunt_id, treasure.user_count);
@@ -66,9 +67,11 @@ void remove_treasure(const char *hunt_id, const char *treasure_id) {
     snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
     if (remove(treasure_file) == 0) {
         printf("Treasure '%s' removed from hunt '%s'.\n", treasure_id, hunt_id);
-        snprintf(log_file, sizeof(log_file), "../hunt/%s/%s_logs.txt", hunt_id, hunt_id);
+
+        // Log the removal of the treasure
+        snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
         char log_entry[256];
-        snprintf(log_entry, sizeof(log_entry), "Removed treasure '%s'", treasure_id);
+        snprintf(log_entry, sizeof(log_entry), "Removed treasure '%s'\n", treasure_id);
         log_action(log_file, log_entry);
     } else {
         perror("Error removing treasure");
@@ -105,7 +108,7 @@ void create_hunt(const char *hunt_id) {
 }
 
 void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const char *username) {
-    char treasure_file[MAX_PATH];
+    char treasure_file[MAX_PATH], log_file[MAX_PATH];
     snprintf(treasure_file, sizeof(treasure_file), "../hunt/%s/treasure_%s.dat", hunt_id, treasure_id);
 
     FILE *file = fopen(treasure_file, "rb+");
@@ -139,6 +142,12 @@ void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const ch
             perror("Error updating treasure data");
         } else {
             printf("User '%s' added to treasure '%s'.\n", username, treasure_id);
+
+            // Log the addition of the user
+            snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
+            char log_entry[256];
+            snprintf(log_entry, sizeof(log_entry), "Added user '%s' to treasure '%s'\n", username, treasure_id);
+            log_action(log_file, log_entry);
         }
     } else {
         printf("Cannot add more users to treasure '%s'. Maximum limit of %d users reached.\n", treasure_id, MAX_USERS);

@@ -9,6 +9,7 @@
 #define CMD_FILE "command.txt"
 
 volatile sig_atomic_t stop_requested = 0;
+int pipe_fd[2]; // Pipe for communication
 
 void handle_signal() {
     printf("handle_signal called\n");
@@ -22,60 +23,57 @@ void handle_signal() {
     char command[256];
     if (fgets(command, sizeof(command), cmd_file)) {
         command[strcspn(command, "\n")] = '\0'; // Remove trailing newline
-        FILE *resp_file = fopen("response.txt", "ap");
-        if (!resp_file) {
-            perror("Failed to open response file");
-            fclose(cmd_file);
-            return;
-        }
-        fprintf(resp_file, "Debugging %s\n", command);
+
+        char response[1024] = {0}; // Buffer to store the response
 
         if (strcmp(command, "list_hunts") == 0) {
-            fprintf(resp_file, "Listing all hunts...\n");
+            snprintf(response, sizeof(response), "Listing all hunts...\n");
             DIR *dir = opendir("../hunt");
             if (!dir) {
-                fprintf(resp_file, "Failed to open hunt directory.\n");
+                strncat(response, "Failed to open hunt directory.\n", sizeof(response) - strlen(response) - 1);
             } else {
                 struct dirent *entry;
                 while ((entry = readdir(dir)) != NULL) {
                     if (entry->d_type == DT_DIR && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                        fprintf(resp_file, "Hunt: %s\n", entry->d_name);
+                        strncat(response, entry->d_name, sizeof(response) - strlen(response) - 1);
+                        strncat(response, "\n", sizeof(response) - strlen(response) - 1);
                     }
                 }
                 closedir(dir);
             }
         } else if (strcmp(command, "list_treasures") == 0) {
-            fprintf(resp_file, "Listing all treasures...\n");
+            snprintf(response, sizeof(response), "Listing all treasures...\n");
 
-            // Prompt the user for the hunt ID
             char hunt_id[256];
             printf("Enter hunt ID: ");
             if (scanf("%255s", hunt_id) != 1) {
-                fprintf(resp_file, "Error: Failed to read hunt ID from keyboard.\n");
-                fclose(resp_file);
-                fclose(cmd_file);
-                return;
-         }
-            list(hunt_id);
+                strncat(response, "Error: Failed to read hunt ID from keyboard.\n", sizeof(response) - strlen(response) - 1);
+            } else {
+                list(hunt_id); // Call the list function
+                strncat(response, "Treasures listed successfully.\n", sizeof(response) - strlen(response) - 1);
+            }
         } else if (strcmp(command, "view_treasure") == 0) {
-            fprintf(resp_file, "Viewing a specific treasure...\n");
+            snprintf(response, sizeof(response), "Viewing a specific treasure...\n");
             char hunt_id[256], treasure_id[256];
             printf("Enter hunt ID: ");
             scanf("%s", hunt_id);
             printf("Enter treasure ID: ");
             scanf("%s", treasure_id);
             view(hunt_id, treasure_id);
+            strncat(response, "Treasure viewed successfully.\n", sizeof(response) - strlen(response) - 1);
         } else if (strcmp(command, "help") == 0) {
-            fprintf(resp_file, "Available commands:\n");
-            fprintf(resp_file, "  list_hunts       - List all hunts\n");
-            fprintf(resp_file, "  list_treasures   - List all treasures in a hunt\n");
-            fprintf(resp_file, "  view_treasure    - View details of a specific treasure\n");
-            fprintf(resp_file, "  help             - Display this help message\n");
+            snprintf(response, sizeof(response),
+                     "Available commands:\n"
+                     "  list_hunts       - List all hunts\n"
+                     "  list_treasures   - List all treasures in a hunt\n"
+                     "  view_treasure    - View details of a specific treasure\n"
+                     "  help             - Display this help message\n");
         } else {
-            fprintf(resp_file, "Unknown command: %s\n", command);
+            snprintf(response, sizeof(response), "Unknown command: %s\n", command);
         }
 
-        fclose(resp_file);
+        // Send the response through the pipe
+        write(pipe_fd[1], response, strlen(response));
     }
 
     fclose(cmd_file);
@@ -117,19 +115,13 @@ void wait_for_signal() {
     pause();
 }
 
-void stop_monitor() {
-    stop_requested = 1;
-}
-
 int main() {
     printf("Monitor process started. Waiting for commands...\n");
 
-    FILE *resp_file = fopen("response.txt", "w");
-    if (!resp_file) {
-        perror("Failed to create response file");
+    if (pipe(pipe_fd) == -1) {
+        perror("Failed to create pipe");
         exit(EXIT_FAILURE);
     }
-    fclose(resp_file);
 
     setup_signal_handlers();
 
@@ -137,10 +129,12 @@ int main() {
         wait_for_signal();
     }
 
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+
     printf("Monitor process stopping...\n");
     usleep(500000);
     printf("Monitor process stopped.\n");
 
-    stop_monitor();
     return 0;
 }
