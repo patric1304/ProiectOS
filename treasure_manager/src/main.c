@@ -6,18 +6,6 @@
 #include "logger.h"
 #include "utils/utils.h"
 
-void display_help() {
-    printf("Usage: treasure_manager [command] [options]\n");
-    printf("Commands:\n");
-    printf("  create_hunt       <hunt_id>                                Create a new treasure hunt\n");
-    printf("  add_treasure      <hunt_id> <id> <user1> [user2 ...] <lat> <lon> <desc> <value>  Add a treasure with users\n");
-    printf("  add_user          <hunt_id> <treasure_id> <username>       Add a user to a treasure\n");
-    printf("  remove_treasure   <hunt_id> <treasure_id>                  Remove a treasure from a hunt\n");
-    printf("  remove_hunt       <hunt_id>                                Remove a treasure hunt\n");
-    printf("  view_treasure     <hunt_id> <treasure_id>                  View details of a treasure\n");
-    printf("  list_treasures    <hunt_id>                                List all treasures in a hunt\n");
-    printf("  help                                                      Display this help message\n");
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {

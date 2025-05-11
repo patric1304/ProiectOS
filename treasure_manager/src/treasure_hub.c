@@ -5,11 +5,10 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <dirent.h>
 
 #define CMD_FILE "command.txt"
-#define RESPONSE_FILE "response.txt"
 
+int pipe_fd[2]; // Pipe for communication with monitor
 pid_t monitor_pid = -1;
 
 void start_monitor() {
@@ -18,12 +17,23 @@ void start_monitor() {
         return;
     }
 
+    if (pipe(pipe_fd) == -1) {
+        perror("Failed to create pipe");
+        return;
+    }
+
     monitor_pid = fork();
     if (monitor_pid == 0) {
+        // Child process: Start the monitor
+        dup2(pipe_fd[1], STDOUT_FILENO); // Redirect monitor output to the pipe
+        close(pipe_fd[0]);
+        close(pipe_fd[1]);
         execl("./monitor", "./monitor", NULL);
         perror("Failed to start monitor");
         exit(EXIT_FAILURE);
     } else if (monitor_pid > 0) {
+        // Parent process
+        close(pipe_fd[1]); // Close write end in parent
         printf("Monitor started with PID %d.\n", monitor_pid);
     } else {
         perror("Failed to fork");
@@ -37,14 +47,12 @@ void stop_monitor() {
     }
 
     kill(monitor_pid, SIGUSR2);
-    printf("Stopping monitor...\n");
     waitpid(monitor_pid, NULL, 0);
-
     monitor_pid = -1;
     printf("Monitor stopped.\n");
 }
 
-void send_command(const char *command) {
+void send_command_to_monitor(const char *command) {
     if (monitor_pid == -1) {
         printf("Monitor is not running.\n");
         return;
@@ -60,52 +68,50 @@ void send_command(const char *command) {
 
     kill(monitor_pid, SIGUSR1);
 
-    usleep(100000);
-
-    FILE *resp_file = fopen(RESPONSE_FILE, "r");
-    if (!resp_file) {
-        perror("Failed to open response file");
-        return;
-    }
-
     char buffer[256];
-    while (fgets(buffer, sizeof(buffer), resp_file)) {
+    ssize_t bytes_read;
+
+    // Set a short delay to allow monitor to write (optional safety)
+    usleep(100000); // 100ms
+
+    // Read response from monitor via pipe
+    while ((bytes_read = read(pipe_fd[0], buffer, sizeof(buffer) - 1)) > 0) {
+        buffer[bytes_read] = '\0';
         printf("%s", buffer);
+        if (bytes_read < sizeof(buffer) - 1) break; // End after last chunk
     }
-    fclose(resp_file);
+
+    printf("\n");
 }
 
 void calculate_score(const char *hunt_id) {
-    char hunt_path[256];
-    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    int score_pipe[2];
+    if (pipe(score_pipe) == -1) {
+        perror("Failed to create pipe");
+        return;
+    }
 
     pid_t pid = fork();
     if (pid == 0) {
-        // Child process: Execute the external program
-        execl("./calculate_score", "./calculate_score", hunt_path, NULL);
+        dup2(score_pipe[1], STDOUT_FILENO);
+        close(score_pipe[0]);
+        close(score_pipe[1]);
+        execl("./calculate_score", "./calculate_score", hunt_id, NULL);
         perror("Failed to execute calculate_score");
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
-        // Parent process: Wait for the child to finish
-        int status;
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            printf("Score calculation for hunt '%s' completed.\n", hunt_id);
-        } else {
-            printf("Score calculation for hunt '%s' failed.\n", hunt_id);
+        close(score_pipe[1]);
+        char buffer[256];
+        ssize_t bytes_read;
+        while ((bytes_read = read(score_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[bytes_read] = '\0';
+            printf("%s", buffer);
         }
+        close(score_pipe[0]);
+        waitpid(pid, NULL, 0);
     } else {
         perror("Failed to fork");
     }
-}
-
-void handle_exit() {
-    if (monitor_pid != -1) {
-        printf("Error: Monitor is still running. Stop it first.\n");
-        return;
-    }
-    printf("Exiting treasure_hub.\n");
-    exit(0);
 }
 
 int main() {
@@ -121,31 +127,33 @@ int main() {
 
         command[strcspn(command, "\n")] = '\0';
 
-        if (strcmp(command, "start_monitor") == 0) {
+        if (strcmp(command, "help") == 0) {
+
+            if (monitor_pid != -1) {
+                send_command_to_monitor("help");
+            } else {
+                    printf("Available commands:\n");
+                    printf("  start_monitor       - Start the monitor process.\n");
+                    printf("  stop_monitor        - Stop the monitor process.\n");
+                    printf("  calculate_score     - Calculate the score for a specific hunt.\n");
+                    printf("  exit                - Exit the program.\n");
+                    printf("  <other commands>    - Send a custom command to the monitor.\n");
+            }
+        } else if (strcmp(command, "start_monitor") == 0) {
             start_monitor();
         } else if (strcmp(command, "stop_monitor") == 0) {
             stop_monitor();
-        } else if (strcmp(command, "list_hunts") == 0 || strcmp(command, "list_treasures") == 0 || strcmp(command, "view_treasure") == 0) {
-            send_command(command);
-        } else if (strcmp(command, "calculate_score") == 0) {
+        } else if (strncmp(command, "calculate_score", 15) == 0) {
             char hunt_id[50];
             printf("Enter hunt ID: ");
             scanf("%s", hunt_id);
             calculate_score(hunt_id);
+            while (getchar() != '\n'); // clear input buffer
         } else if (strcmp(command, "exit") == 0) {
-            handle_exit();
-        } else if (strcmp(command, "help") == 0) {
-            printf("Available commands:\n");
-            printf("  start_monitor - Start the monitor process.\n");
-            printf("  stop_monitor - Stop the monitor process.\n");
-            printf("  list_hunts - List all hunts.\n");
-            printf("  list_treasures - List all treasures in a hunt.\n");
-            printf("  view_treasure - View details of a specific treasure.\n");
-            printf("  calculate_score - Calculate the score for a specific hunt.\n");
-            printf("  exit - Exit the treasure_hub.\n");
-            printf("  help - Display this help message.\n");
+            stop_monitor();
+            break;
         } else {
-            printf("Unknown command. Available commands: start_monitor, stop_monitor, list_hunts, list_treasures, view_treasure, calculate_score, exit.\n");
+            send_command_to_monitor(command);
         }
     }
 
