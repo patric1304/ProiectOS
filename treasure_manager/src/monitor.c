@@ -21,26 +21,64 @@ void handle_signal(int signal) {
         }
 
         if (fgets(command, sizeof(command), cmd_file)) {
-            command[strcspn(command, "\n")] = '\0'; // Remove newline
-
-            // Parse the command
-            char cmd[256], arg1[256], arg2[256], arg3[256];
-            int num_args = sscanf(command, "%s %s %s %s", cmd, arg1, arg2, arg3);
+            command[strcspn(command, "\n")] = '\0';
+            char cmd[256], arg1[256], arg2[256], arg3[256], arg4[256];
+            int num_args = sscanf(command, "%s %s %s %s %s", cmd, arg1, arg2, arg3, arg4);
 
             char response[1024] = {0}; // Buffer for the response
 
             if (strcmp(cmd, "create_hunt") == 0 && num_args == 2) {
                 create_hunt(arg1);
                 snprintf(response, sizeof(response), "Hunt '%s' created successfully.\n", arg1);
-            } else if (strcmp(cmd, "add_treasure") == 0 && num_args >= 4) {
+            } else if (strcmp(cmd, "add_treasure") == 0) {
                 Treasure treasure;
-                strncpy(treasure.id, arg2, MAX_LENGTH - 1);
-                treasure.id[MAX_LENGTH - 1] = '\0';
-                treasure.value = atoi(arg3);
+                char users[MAX_USERS][MAX_LENGTH] = {0};
+                int user_count = 0;
 
-                char users[MAX_USERS][MAX_LENGTH] = {0}; // No users initially
-                add_treasure(arg1, treasure, 0, users);
-                snprintf(response, sizeof(response), "Treasure '%s' added to hunt '%s'.\n", arg2, arg1);
+                char *token = strtok(command, " ");
+                int arg_index = 0;
+                char *args[256]; 
+
+                while (token != NULL && arg_index < 256) {
+                    args[arg_index++] = token;
+                    token = strtok(NULL, " ");
+                }
+
+                if (arg_index < 8) { 
+                    snprintf(response, sizeof(response), "Invalid add_treasure command format.\n");
+                    write(STDOUT_FILENO, response, strlen(response));
+                    return;
+                }
+
+                strncpy(treasure.id, args[2], MAX_LENGTH - 1);
+                treasure.id[MAX_LENGTH - 1] = '\0';
+                int i = 3;
+                while (i < arg_index - 4 && user_count < MAX_USERS) {
+                    strncpy(users[user_count], args[i], MAX_LENGTH - 1);
+                    users[user_count][MAX_LENGTH - 1] = '\0';
+                    user_count++;
+                    i++;
+                }
+
+                treasure.latitude = atof(args[i++]);
+                treasure.longitude = atof(args[i++]);
+                strncpy(treasure.description, args[i++], MAX_LENGTH - 1);
+                treasure.description[MAX_LENGTH - 1] = '\0';
+                treasure.value = atoi(args[i]);
+
+                add_treasure(args[1], treasure, user_count, users);
+                snprintf(response, sizeof(response),
+                         "Treasure '%s' added to hunt '%s' with value %d, description '%s', latitude %.2f, longitude %.2f, and %d users.\n",
+                         treasure.id, args[1], treasure.value, treasure.description, treasure.latitude, treasure.longitude, user_count);
+
+            } else if (strcmp(cmd, "remove_treasure") == 0 && num_args == 3) {
+                remove_treasure(arg1, arg2);
+                snprintf(response, sizeof(response), "Treasure '%s' removed from hunt '%s'.\n", arg2, arg1);
+
+            } else if (strcmp(cmd, "add_user") == 0 && num_args == 4) {
+                add_user_to_treasure(arg1, arg2, arg3);
+                snprintf(response, sizeof(response), "User '%s' added to treasure '%s' in hunt '%s'.\n", arg3, arg2, arg1);
+                
             } else if (strcmp(cmd, "list_treasures") == 0 && num_args == 2) {
                 int temp_fd[2];
                 pipe(temp_fd);
@@ -57,6 +95,7 @@ void handle_signal(int signal) {
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
+
             } else if (strcmp(cmd, "view_treasure") == 0 && num_args == 3) {
                 int temp_fd[2];
                 pipe(temp_fd);
@@ -73,12 +112,15 @@ void handle_signal(int signal) {
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
+
             } else if (strcmp(cmd, "remove_hunt") == 0 && num_args == 2) {
                 remove_hunt(arg1);
                 snprintf(response, sizeof(response), "Hunt '%s' removed successfully.\n", arg1);
+
             } else if (strcmp(cmd, "add_user_to_treasure") == 0 && num_args == 4) {
                 add_user_to_treasure(arg1, arg2, arg3);
                 snprintf(response, sizeof(response), "User '%s' added to treasure '%s' in hunt '%s'.\n", arg3, arg2, arg1);
+
             } else if (strcmp(cmd, "help") == 0) {
                 // Redirect the output of help to the response buffer
                 int temp_fd[2];
@@ -98,6 +140,7 @@ void handle_signal(int signal) {
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
+                
             } else {
                 snprintf(response, sizeof(response), "Unknown command: %s\n", command);
             }
