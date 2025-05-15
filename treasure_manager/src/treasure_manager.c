@@ -78,12 +78,24 @@ void remove_treasure(const char *hunt_id, const char *treasure_id) {
 
 void create_hunt(const char *hunt_id) {
     char hunt_path[MAX_PATH], log_path[MAX_PATH], symlink_path[MAX_PATH];
-    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    int written = snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    if (written < 0 || written >= sizeof(hunt_path)) {
+        fprintf(stderr, "Path too long for hunt_path buffer\n");
+        return;
+    }
     if (create_directory("../hunt") == 0 && create_directory(hunt_path) == 0) {
-        snprintf(log_path, sizeof(log_path), "%s/logs", hunt_path);
+        written = snprintf(log_path, sizeof(log_path), "%s/logs", hunt_path);
+        if (written < 0 || written >= sizeof(log_path)) {
+            fprintf(stderr, "Path too long for log_path buffer\n");
+            return;
+        }
         if (create_directory(log_path) == 0) {
             char log_file[MAX_PATH];
-            snprintf(log_file, sizeof(log_file), "%s/log.txt", log_path);
+            written = snprintf(log_file, sizeof(log_file), "%s/log.txt", log_path);
+            if (written < 0 || written >= sizeof(log_file)) {
+                fprintf(stderr, "Path too long for log_file buffer\n");
+                return;
+            }
             FILE *file = fopen(log_file, "w");
             if (file) {
                 fprintf(file, "Hunt '%s' created.\n", hunt_id);
@@ -95,7 +107,11 @@ void create_hunt(const char *hunt_id) {
 
             create_directory("../log");
 
-            snprintf(symlink_path, sizeof(symlink_path), "../log/final_logs_%s", hunt_id);
+            written = snprintf(symlink_path, sizeof(symlink_path), "../log/final_logs_%s", hunt_id);
+            if (written < 0 || written >= sizeof(symlink_path)) {
+                fprintf(stderr, "Path too long for symlink_path buffer\n");
+                return;
+            }
             if (create_symlink(log_path, symlink_path) == 0) {
                 printf("Hunt '%s' created successfully with logs.\n", hunt_id);
             } else {
@@ -245,7 +261,11 @@ void list_hunts() {
 
 void remove_hunt(const char *hunt_id) {
     char hunt_path[MAX_PATH];
-    snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    int written = snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
+    if (written < 0 || written >= sizeof(hunt_path)) {
+        fprintf(stderr, "Path too long for hunt_path buffer\n");
+        return;
+    }
 
     DIR *d = opendir(hunt_path);
     if (!d) {
@@ -272,13 +292,21 @@ void remove_hunt(const char *hunt_id) {
 
     // Remove the logs directory inside the hunt
     char logs_dir[MAX_PATH];
-    snprintf(logs_dir, sizeof(logs_dir), "%s/logs", hunt_path);
+    written = snprintf(logs_dir, sizeof(logs_dir), "%s/logs", hunt_path);
+    if (written < 0 || written >= sizeof(logs_dir)) {
+        fprintf(stderr, "Path too long for logs_dir buffer\n");
+        return;
+    }
     d = opendir(logs_dir);
     if (d) {
         while ((e = readdir(d)) != NULL) {
             if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) continue;
             char f[MAX_PATH];
-            snprintf(f, sizeof(f), "%s/%s", logs_dir, e->d_name);
+            written = snprintf(f, sizeof(f), "%s/%s", logs_dir, e->d_name);
+            if (written < 0 || written >= sizeof(f)) {
+                fprintf(stderr, "Path too long for f buffer\n");
+                continue;
+            }
             if (remove(f) != 0)
                 fprintf(stderr, "Failed to remove '%s': %s\n", f, strerror(errno));
         }
@@ -288,13 +316,21 @@ void remove_hunt(const char *hunt_id) {
     }
 
     char ext_log[MAX_PATH];
-    snprintf(ext_log, sizeof(ext_log), "../logs/%s_log.txt", hunt_id);
+    written = snprintf(ext_log, sizeof(ext_log), "../logs/%s_log.txt", hunt_id);
+    if (written < 0 || written >= sizeof(ext_log)) {
+        fprintf(stderr, "Path too long for ext_log buffer\n");
+        return;
+    }
     if (remove(ext_log) != 0 && errno != ENOENT)
         fprintf(stderr, "Failed to remove external log '%s': %s\n", ext_log, strerror(errno));
 
     // Remove the symbolic link in the log folder
     char final_logs_symlink[MAX_PATH];
-    snprintf(final_logs_symlink, sizeof(final_logs_symlink), "../log/final_logs_%s", hunt_id);
+    written = snprintf(final_logs_symlink, sizeof(final_logs_symlink), "../log/final_logs_%s", hunt_id);
+    if (written < 0 || written >= sizeof(final_logs_symlink)) {
+        fprintf(stderr, "Path too long for final_logs_symlink buffer\n");
+        return;
+    }
     if (remove(final_logs_symlink) != 0 && errno != ENOENT) {
         fprintf(stderr, "Failed to remove symbolic link '%s': %s\n", final_logs_symlink, strerror(errno));
     }
@@ -306,7 +342,6 @@ void remove_hunt(const char *hunt_id) {
         fprintf(stderr, "Could not remove '%s': %s\n", hunt_path, strerror(errno));
     }
 }
-
 
 void help() {
     printf("Usage: treasure_manager [command] [options]\n");

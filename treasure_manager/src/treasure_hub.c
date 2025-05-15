@@ -128,7 +128,11 @@ void view_treasure() {
     }
     while (getchar() != '\n');
     char cmd[256];
-    snprintf(cmd, sizeof(cmd), "view_treasure %s %s", hunt_id, treasure_id);
+    int written = snprintf(cmd, sizeof(cmd), "view_treasure %s %s", hunt_id, treasure_id);
+    if (written < 0 || written >= sizeof(cmd)) {
+        printf("Command too long, cannot process.\n");
+        return;
+    }
     send_command_to_monitor(cmd);
 }
 
