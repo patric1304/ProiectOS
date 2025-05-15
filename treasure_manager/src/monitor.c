@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/wait.h>
-#include "treasure_hunt.h"
+#include "treasure_manager.h"
 
 #define CMD_FILE "command.txt"
 #define FIFO_PATH "monitor_pipe"

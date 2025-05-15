@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "treasure_hunt.h"
+#include "treasure_manager.h"
 #include "file_operations.h"
 #include "logger.h"
 #include "utils/utils.h"

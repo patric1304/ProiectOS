@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
-#include "treasure_hunt.h"
+#include "treasure_manager.h"
 #include "file_operations.h"
 #include "logger.h"
 
