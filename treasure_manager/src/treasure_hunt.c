@@ -11,7 +11,7 @@
 #include "logger.h"
 
 #define MAX_TREASURES 100
-#define MAX_PATH 4096 // Define a larger buffer for paths
+#define MAX_PATH 4096 
 
 static Treasure treasures[MAX_TREASURES];
 static int treasure_count = 0;
@@ -35,7 +35,6 @@ void add_treasure(const char *hunt_id, Treasure treasure, int userNumber, char u
     fwrite(&treasure, sizeof(Treasure), 1, file);
     fclose(file);
 
-    // Log the addition of the treasure
     snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
     char log_entry[512];
     snprintf(log_entry, sizeof(log_entry), "Added treasure '%s' with value %d and %d users\n", treasure.id, treasure.value, treasure.user_count);
@@ -68,7 +67,6 @@ void remove_treasure(const char *hunt_id, const char *treasure_id) {
     if (remove(treasure_file) == 0) {
         printf("Treasure '%s' removed from hunt '%s'.\n", treasure_id, hunt_id);
 
-        // Log the removal of the treasure
         snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
         char log_entry[256];
         snprintf(log_entry, sizeof(log_entry), "Removed treasure '%s'\n", treasure_id);
@@ -143,7 +141,6 @@ void add_user_to_treasure(const char *hunt_id, const char *treasure_id, const ch
         } else {
             printf("User '%s' added to treasure '%s'.\n", username, treasure_id);
 
-            // Log the addition of the user
             snprintf(log_file, sizeof(log_file), "../hunt/%s/logs/log.txt", hunt_id);
             char log_entry[256];
             snprintf(log_entry, sizeof(log_entry), "Added user '%s' to treasure '%s'\n", username, treasure_id);
@@ -214,11 +211,42 @@ void list(const char *hunt_id) {
     closedir(dir);
 }
 
+void list_hunts() {
+    DIR *dir = opendir("../hunt");
+    if (!dir) {
+        printf("No hunts found.\n");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_DIR &&
+            strcmp(entry->d_name, ".") != 0 &&
+            strcmp(entry->d_name, "..") != 0) {
+            // Count treasures in this hunt
+            char hunt_path[512];
+            snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", entry->d_name);
+            DIR *hunt_dir = opendir(hunt_path);
+            int treasure_count = 0;
+            if (hunt_dir) {
+                struct dirent *e;
+                while ((e = readdir(hunt_dir)) != NULL) {
+                    if (strncmp(e->d_name, "treasure_", 9) == 0) {
+                        treasure_count++;
+                    }
+                }
+                closedir(hunt_dir);
+            }
+            printf("Hunt: %s, Treasures: %d\n", entry->d_name, treasure_count);
+        }
+    }
+    closedir(dir);
+}
+
 void remove_hunt(const char *hunt_id) {
     char hunt_path[MAX_PATH];
     snprintf(hunt_path, sizeof(hunt_path), "../hunt/%s", hunt_id);
 
-    // Open the hunt directory
     DIR *d = opendir(hunt_path);
     if (!d) {
         fprintf(stderr, "Error opening '%s': %s\n", hunt_path, strerror(errno));
@@ -259,7 +287,6 @@ void remove_hunt(const char *hunt_id) {
             fprintf(stderr, "Failed to rmdir '%s': %s\n", logs_dir, strerror(errno));
     }
 
-    // Remove the external log file
     char ext_log[MAX_PATH];
     snprintf(ext_log, sizeof(ext_log), "../logs/%s_log.txt", hunt_id);
     if (remove(ext_log) != 0 && errno != ENOENT)
@@ -291,5 +318,6 @@ void help() {
     printf("  remove_hunt       <hunt_id>                                Remove a treasure hunt\n");
     printf("  view_treasure     <hunt_id> <treasure_id>                  View details of a treasure\n");
     printf("  list_treasures    <hunt_id>                                List all treasures in a hunt\n");
+    printf("  list_hunts                                                List all hunts\n");
     printf("  help                                                      Display this help message\n");
 }

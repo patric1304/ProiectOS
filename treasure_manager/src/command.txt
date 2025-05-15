@@ -1,1 +1,1 @@
-list_treasures h1
+view_treasure h1 t1

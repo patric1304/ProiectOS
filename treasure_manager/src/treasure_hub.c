@@ -8,7 +8,6 @@
 
 #define CMD_FILE "command.txt"
 
-int pipe_fd[2]; // Pipe for communication with monitor
 pid_t monitor_pid = -1;
 
 void start_monitor() {
@@ -17,23 +16,13 @@ void start_monitor() {
         return;
     }
 
-    if (pipe(pipe_fd) == -1) {
-        perror("Failed to create pipe");
-        return;
-    }
-
     monitor_pid = fork();
     if (monitor_pid == 0) {
         // Child process: Start the monitor
-        dup2(pipe_fd[1], STDOUT_FILENO); // Redirect monitor output to the pipe
-        close(pipe_fd[0]);
-        close(pipe_fd[1]);
         execl("./monitor", "./monitor", NULL);
         perror("Failed to start monitor");
         exit(EXIT_FAILURE);
     } else if (monitor_pid > 0) {
-        // Parent process
-        close(pipe_fd[1]); // Close write end in parent
         printf("Monitor started with PID %d.\n", monitor_pid);
     } else {
         perror("Failed to fork");
@@ -68,20 +57,7 @@ void send_command_to_monitor(const char *command) {
 
     kill(monitor_pid, SIGUSR1);
 
-    char buffer[256];
-    ssize_t bytes_read;
-
-    // Set a short delay to allow monitor to write (optional safety)
-    usleep(100000); // 100ms
-
-    // Read response from monitor via pipe
-    while ((bytes_read = read(pipe_fd[0], buffer, sizeof(buffer) - 1)) > 0) {
-        buffer[bytes_read] = '\0';
-        printf("%s", buffer);
-        if (bytes_read < sizeof(buffer) - 1) break; // End after last chunk
-    }
-
-    printf("\n");
+    printf("Command sent to monitor. Check the monitor output terminal.\n");
 }
 
 void calculate_score(const char *hunt_id) {
@@ -114,6 +90,48 @@ void calculate_score(const char *hunt_id) {
     }
 }
 
+void list_hunts() {
+    if (monitor_pid == -1) {
+        printf("Monitor is not running.\n");
+        return;
+    }
+    send_command_to_monitor("list_hunts");
+}
+
+void list_treasures() {
+    char hunt_id[128];
+    printf("Enter hunt ID: ");
+    if (scanf("%127s", hunt_id) != 1) {
+        printf("Invalid input.\n");
+        while (getchar() != '\n');
+        return;
+    }
+    while (getchar() != '\n');
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "list_treasures %s", hunt_id);
+    send_command_to_monitor(cmd);
+}
+
+void view_treasure() {
+    char hunt_id[128], treasure_id[128];
+    printf("Enter hunt ID: ");
+    if (scanf("%127s", hunt_id) != 1) {
+        printf("Invalid input.\n");
+        while (getchar() != '\n');
+        return;
+    }
+    printf("Enter treasure ID: ");
+    if (scanf("%127s", treasure_id) != 1) {
+        printf("Invalid input.\n");
+        while (getchar() != '\n');
+        return;
+    }
+    while (getchar() != '\n');
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "view_treasure %s %s", hunt_id, treasure_id);
+    send_command_to_monitor(cmd);
+}
+
 int main() {
     char command[256];
 
@@ -128,21 +146,29 @@ int main() {
         command[strcspn(command, "\n")] = '\0';
 
         if (strcmp(command, "help") == 0) {
-
             if (monitor_pid != -1) {
                 send_command_to_monitor("help");
             } else {
-                    printf("Available commands:\n");
-                    printf("  start_monitor       - Start the monitor process.\n");
-                    printf("  stop_monitor        - Stop the monitor process.\n");
-                    printf("  calculate_score     - Calculate the score for a specific hunt.\n");
-                    printf("  exit                - Exit the program.\n");
-                    printf("  <other commands>    - Send a custom command to the monitor.\n");
+                printf("Available commands:\n");
+                printf("  start_monitor       - Start the monitor process.\n");
+                printf("  stop_monitor        - Stop the monitor process.\n");
+                printf("  calculate_score     - Calculate the score for a specific hunt.\n");
+                printf("  list_hunts          - List all hunts and the number of treasures in each.\n");
+                printf("  list_treasures      - List all treasures in a hunt.\n");
+                printf("  view_treasure       - Show info about a treasure in a hunt.\n");
+                printf("  exit                - Exit the program.\n");
+                printf("  <other commands>    - Send a custom command to the monitor.\n");
             }
         } else if (strcmp(command, "start_monitor") == 0) {
             start_monitor();
         } else if (strcmp(command, "stop_monitor") == 0) {
             stop_monitor();
+        } else if (strcmp(command, "list_hunts") == 0) {
+            list_hunts();
+        } else if (strcmp(command, "list_treasures") == 0) {
+            list_treasures();
+        } else if (strcmp(command, "view_treasure") == 0) {
+            view_treasure();
         } else if (strncmp(command, "calculate_score", 15) == 0) {
             char hunt_id[50];
             printf("Enter hunt ID: ");
@@ -150,8 +176,11 @@ int main() {
             calculate_score(hunt_id);
             while (getchar() != '\n'); // clear input buffer
         } else if (strcmp(command, "exit") == 0) {
-            stop_monitor();
-            break;
+            if (monitor_pid != -1) {
+                printf("Error: Monitor is still running. Please stop the monitor before exiting.\n");
+            } else {
+                break;
+            }
         } else {
             send_command_to_monitor(command);
         }

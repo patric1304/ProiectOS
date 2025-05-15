@@ -10,6 +10,9 @@
 #include "treasure_hunt.h"
 
 #define CMD_FILE "command.txt"
+#define FIFO_PATH "monitor_pipe"
+
+int fifo_fd = -1; // Global file descriptor for the FIFO
 
 void handle_signal(int signal) {
     if (signal == SIGUSR1) {
@@ -46,7 +49,9 @@ void handle_signal(int signal) {
 
                 if (arg_index < 8) { 
                     snprintf(response, sizeof(response), "Invalid add_treasure command format.\n");
-                    write(STDOUT_FILENO, response, strlen(response));
+                    if (fifo_fd != -1) {
+                        write(fifo_fd, response, strlen(response));
+                    }
                     return;
                 }
 
@@ -121,6 +126,23 @@ void handle_signal(int signal) {
                 add_user_to_treasure(arg1, arg2, arg3);
                 snprintf(response, sizeof(response), "User '%s' added to treasure '%s' in hunt '%s'.\n", arg3, arg2, arg1);
 
+            } else if (strcmp(cmd, "list_hunts") == 0) {
+                int temp_fd[2];
+                pipe(temp_fd);
+                pid_t pid = fork();
+                if (pid == 0) {
+                    dup2(temp_fd[1], STDOUT_FILENO);
+                    close(temp_fd[0]);
+                    close(temp_fd[1]);
+                    list_hunts(); 
+                    exit(0);
+                } else {
+                    close(temp_fd[1]);
+                    read(temp_fd[0], response, sizeof(response) - 1);
+                    close(temp_fd[0]);
+                    waitpid(pid, NULL, 0);
+                }
+
             } else if (strcmp(cmd, "help") == 0) {
                 // Redirect the output of help to the response buffer
                 int temp_fd[2];
@@ -128,10 +150,10 @@ void handle_signal(int signal) {
                 pid_t pid = fork();
                 if (pid == 0) {
                     // Child process
-                    dup2(temp_fd[1], STDOUT_FILENO); // Redirect stdout to the pipe
+                    dup2(temp_fd[1], STDOUT_FILENO); 
                     close(temp_fd[0]);
                     close(temp_fd[1]);
-                    help(); // Call the help method
+                    help(); 
                     exit(0);
                 } else {
                     // Parent process
@@ -145,26 +167,40 @@ void handle_signal(int signal) {
                 snprintf(response, sizeof(response), "Unknown command: %s\n", command);
             }
 
-            // Write response to stdout (redirected pipe)
-            write(STDOUT_FILENO, response, strlen(response));
+            if (fifo_fd != -1) {
+                write(fifo_fd, response, strlen(response));
+            }
         }
 
         fclose(cmd_file);
     } else if (signal == SIGUSR2) {
         printf("Monitor stopping...\n");
+        if (fifo_fd != -1) close(fifo_fd);
         exit(0);
     }
 }
 
 int main() {
-    signal(SIGUSR1, handle_signal);
-    signal(SIGUSR2, handle_signal);
+    // Open the FIFO for writing and keep it open
+    fifo_fd = open(FIFO_PATH, O_WRONLY);
+    if (fifo_fd == -1) {
+        perror("Failed to open FIFO for writing at startup");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sigaction sa;
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGUSR1, &sa, NULL);
+    sigaction(SIGUSR2, &sa, NULL);
 
     printf("Monitor started. Waiting for commands...\n");
 
     while (1) {
-        pause(); // Wait for signals
+        pause();
     }
 
+    if (fifo_fd != -1) close(fifo_fd);
     return 0;
 }
