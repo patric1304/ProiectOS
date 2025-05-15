@@ -1,10 +1,8 @@
-#define _WIN32_WINNT 0x0600 // Enable CreateSymbolicLinkA support
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h> // For symlink
+#include <unistd.h> 
 #include "file_operations.h"
 
 int write_treasure_data(const char *filename, const char *data) {

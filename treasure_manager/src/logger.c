@@ -12,7 +12,7 @@ void init_logger() {
 
     struct stat st = {0};
     if (stat("logs", &st) == -1) {
-        if (mkdir("logs", 0777) != 0) { // Create the logs directory with full permissions
+        if (mkdir("logs", 0777) != 0) { 
             perror("Failed to create logs directory");
             exit(EXIT_FAILURE);
         }
