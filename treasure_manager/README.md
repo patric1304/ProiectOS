@@ -72,6 +72,3 @@ treasure_manager
 
 ## Logging
 All user actions and system events are logged in `logs/treasure_manager.log` for tracking and debugging purposes.
-
-## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any suggestions or improvements.
