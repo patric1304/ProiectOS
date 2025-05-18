@@ -57,7 +57,6 @@ void send_command_to_monitor(const char *command) {
 
     kill(monitor_pid, SIGUSR1);
 
-    printf("Command sent to monitor. Check the monitor output terminal.\n");
 }
 
 void calculate_score(const char *hunt_id) {
@@ -143,6 +142,7 @@ int main() {
 
     while (1) {
         printf("> ");
+        fflush(stdout);
         if (!fgets(command, sizeof(command), stdin)) {
             break;
         }
@@ -178,7 +178,7 @@ int main() {
             printf("Enter hunt ID: ");
             scanf("%s", hunt_id);
             calculate_score(hunt_id);
-            while (getchar() != '\n'); // clear input buffer
+            while (getchar() != '\n');
         } else if (strcmp(command, "exit") == 0) {
             if (monitor_pid != -1) {
                 printf("Error: Monitor is still running. Please stop the monitor before exiting.\n");

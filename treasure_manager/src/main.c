@@ -10,7 +10,7 @@
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: treasure_manager <command> [arguments]\n");
-        display_help();
+        help();
         return 1;
     }
 
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(command, "add_treasure") == 0) {
         if (argc < 9) { 
             printf("Insufficient arguments for add_treasure command.\n");
-            display_help();
+            help();
             return 1;
         }
 
@@ -69,10 +69,10 @@ int main(int argc, char *argv[]) {
         const char *hunt_id = argv[2];
         list(hunt_id);
     } else if (strcmp(command, "help") == 0) {
-        display_help();
+        help();
     } else {
         printf("Unknown command or invalid arguments.\n");
-        display_help();
+        help();
     }
 
     return 0;

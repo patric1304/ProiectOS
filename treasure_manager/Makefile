@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -I./src -I./src/utils
-SRC = src/main.c src/treasure_hunt.c src/file_operations.c src/logger.c src/utils/utils.c
+SRC = src/main.c src/treasure_hunt.c src/file_operations.c src/logger.c src/utils/utils.c/calculate_score.c
 OBJ = $(SRC:.c=.o)
 EXEC = treasure_manager
 

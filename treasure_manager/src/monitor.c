@@ -32,6 +32,8 @@ void handle_signal(int signal) {
 
             if (strcmp(cmd, "create_hunt") == 0 && num_args == 2) {
                 create_hunt(arg1);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response), "Hunt '%s' created successfully.\n", arg1);
             } else if (strcmp(cmd, "add_treasure") == 0) {
                 Treasure treasure;
@@ -72,16 +74,22 @@ void handle_signal(int signal) {
                 treasure.value = atoi(args[i]);
 
                 add_treasure(args[1], treasure, user_count, users);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response),
                          "Treasure '%s' added to hunt '%s' with value %d, description '%s', latitude %.2f, longitude %.2f, and %d users.\n",
                          treasure.id, args[1], treasure.value, treasure.description, treasure.latitude, treasure.longitude, user_count);
 
             } else if (strcmp(cmd, "remove_treasure") == 0 && num_args == 3) {
                 remove_treasure(arg1, arg2);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response), "Treasure '%s' removed from hunt '%s'.\n", arg2, arg1);
 
             } else if (strcmp(cmd, "add_user") == 0 && num_args == 4) {
                 add_user_to_treasure(arg1, arg2, arg3);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response), "User '%s' added to treasure '%s' in hunt '%s'.\n", arg3, arg2, arg1);
                 
             } else if (strcmp(cmd, "list_treasures") == 0 && num_args == 2) {
@@ -96,7 +104,13 @@ void handle_signal(int signal) {
                     exit(0);
                 } else {
                     close(temp_fd[1]);
-                    read(temp_fd[0], response, sizeof(response) - 1);
+                    ssize_t bytes;
+                    char buf[512];
+                    response[0] = '\0';
+                    while ((bytes = read(temp_fd[0], buf, sizeof(buf) - 1)) > 0) {
+                        buf[bytes] = '\0';
+                        strncat(response, buf, sizeof(response) - strlen(response) - 1);
+                    }
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
@@ -113,17 +127,27 @@ void handle_signal(int signal) {
                     exit(0);
                 } else {
                     close(temp_fd[1]);
-                    read(temp_fd[0], response, sizeof(response) - 1);
+                    ssize_t bytes;
+                    char buf[512];
+                    response[0] = '\0';
+                    while ((bytes = read(temp_fd[0], buf, sizeof(buf) - 1)) > 0) {
+                        buf[bytes] = '\0';
+                        strncat(response, buf, sizeof(response) - strlen(response) - 1);
+                    }
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
 
             } else if (strcmp(cmd, "remove_hunt") == 0 && num_args == 2) {
                 remove_hunt(arg1);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response), "Hunt '%s' removed successfully.\n", arg1);
 
             } else if (strcmp(cmd, "add_user_to_treasure") == 0 && num_args == 4) {
                 add_user_to_treasure(arg1, arg2, arg3);
+                printf("> ");
+                fflush(stdout);
                 snprintf(response, sizeof(response), "User '%s' added to treasure '%s' in hunt '%s'.\n", arg3, arg2, arg1);
 
             } else if (strcmp(cmd, "list_hunts") == 0) {
@@ -138,7 +162,13 @@ void handle_signal(int signal) {
                     exit(0);
                 } else {
                     close(temp_fd[1]);
-                    read(temp_fd[0], response, sizeof(response) - 1);
+                    ssize_t bytes;
+                    char buf[512];
+                    response[0] = '\0';
+                    while ((bytes = read(temp_fd[0], buf, sizeof(buf) - 1)) > 0) {
+                        buf[bytes] = '\0';
+                        strncat(response, buf, sizeof(response) - strlen(response) - 1);
+                    }
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
@@ -158,7 +188,13 @@ void handle_signal(int signal) {
                 } else {
                     // Parent process
                     close(temp_fd[1]);
-                    read(temp_fd[0], response, sizeof(response) - 1);
+                    ssize_t bytes;
+                    char buf[512];
+                    response[0] = '\0';
+                    while ((bytes = read(temp_fd[0], buf, sizeof(buf) - 1)) > 0) {
+                        buf[bytes] = '\0';
+                        strncat(response, buf, sizeof(response) - strlen(response) - 1);
+                    }
                     close(temp_fd[0]);
                     waitpid(pid, NULL, 0);
                 }
